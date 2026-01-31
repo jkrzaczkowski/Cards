@@ -37,7 +37,9 @@ Manualne tworzenie wysokiej jakości fiszek wymaga dużych nakładów czasu i wy
    - Prawo do wglądu i usunięcia danych (konto wraz z fiszkami) na wniosek użytkownika.
 
 ## 4. Granice produktu
-1. Poza zakresem MVP:
+1. Ograniczenie MVP: W MVP stan sesji nauki (spaced repetition) jest przechowywany wyłącznie po stronie klienta; odświeżenie strony lub zmiana urządzenia kończy bieżącą sesję i algorytm rozpoczyna od nowa.
+
+2. Poza zakresem MVP:
    - Zaawansowany, własny algorytm powtórek (korzystamy z gotowego rozwiązania, biblioteki open-source).
    - Mechanizmy gamifikacji.
    - Aplikacje mobilne (obecnie tylko wersja web).
