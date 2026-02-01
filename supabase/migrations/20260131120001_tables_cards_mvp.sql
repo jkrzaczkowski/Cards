@@ -1,6 +1,6 @@
 -- ---------------------------------------------------------------------------
 -- Migration: Tables cards MVP
--- Purpose: Create generation_sessions, cards, card_proposals and trigger on cards.
+-- Purpose: Create generation_sessions, cards, card_proposals; trigger on cards.
 -- Depends on: 20260131120000_function_set_updated_at.sql
 -- Affected: public.generation_sessions, public.cards, public.card_proposals
 -- ---------------------------------------------------------------------------
@@ -8,11 +8,11 @@
 -- ---------------------------------------------------------------------------
 -- Table: generation_sessions
 -- One row per LLM response session; holds input_length, generated_count,
--- accepted_count. No FK to auth.users; logical reference by user_id.
+-- accepted_count. user_id references auth.users; CASCADE deletes on user delete.
 -- ---------------------------------------------------------------------------
 create table public.generation_sessions (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
   input_length integer not null,
   generated_count integer not null,
   accepted_count integer not null default 0,
@@ -22,7 +22,7 @@ create table public.generation_sessions (
 comment on table public.generation_sessions is
   'One row per generation session (after LLM response). Metrics: input length, generated and accepted counts.';
 comment on column public.generation_sessions.user_id is
-  'Logical reference to auth.users.id; no FK. Cleaned by trigger on auth.users delete.';
+  'FK to auth.users(id). Rows deleted on user delete (CASCADE).';
 comment on column public.generation_sessions.input_length is
   'Length of input text in characters.';
 comment on column public.generation_sessions.generated_count is
@@ -37,7 +37,7 @@ comment on column public.generation_sessions.accepted_count is
 -- ---------------------------------------------------------------------------
 create table public.cards (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
   front text not null check (char_length(front) <= 200),
   back text not null check (char_length(back) <= 500),
   source text not null check (source in ('manual', 'ai_generated')),
@@ -48,7 +48,7 @@ create table public.cards (
 comment on table public.cards is
   'User-approved flashcards. Single client-facing id (UUID).';
 comment on column public.cards.user_id is
-  'Logical reference to auth.users.id; no FK. Cleaned by trigger on auth.users delete.';
+  'FK to auth.users(id). Rows deleted on user delete (CASCADE).';
 comment on column public.cards.source is
   'Set on insert only; no default. Values: manual, ai_generated.';
 

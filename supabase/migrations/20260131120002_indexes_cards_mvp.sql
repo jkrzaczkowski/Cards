@@ -1,8 +1,8 @@
 -- ---------------------------------------------------------------------------
 -- Migration: Indexes cards MVP
--- Purpose: Add indexes for RLS, filtering and sorted lists (per db-plan).
+-- Purpose: Indexes for RLS, filtering and sorted lists.
 -- Depends on: 20260131120001_tables_cards_mvp.sql
--- Affected: cards, generation_sessions, card_proposals
+-- Affected: public.cards, public.generation_sessions, public.card_proposals
 -- ---------------------------------------------------------------------------
 
 create index cards_user_id_idx on public.cards (user_id);

@@ -1,6 +1,6 @@
 -- ---------------------------------------------------------------------------
 -- Migration: Function set_updated_at
--- Purpose: Helper for cards.updated_at trigger. Used by next migration.
+-- Purpose: Helper for cards.updated_at trigger. Required by 20001.
 -- Affected: public.set_updated_at()
 -- ---------------------------------------------------------------------------
 

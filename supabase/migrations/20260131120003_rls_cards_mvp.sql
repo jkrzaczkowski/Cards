@@ -1,8 +1,8 @@
 -- ---------------------------------------------------------------------------
 -- Migration: RLS policies cards MVP
--- Purpose: Enable RLS and add granular policies (anon + authenticated per op).
+-- Purpose: Enable RLS and granular policies (anon + authenticated per operation).
 -- Depends on: 20260131120002_indexes_cards_mvp.sql
--- Affected: cards, generation_sessions, card_proposals
+-- Affected: public.cards, public.generation_sessions, public.card_proposals
 -- ---------------------------------------------------------------------------
 
 alter table public.cards enable row level security;
