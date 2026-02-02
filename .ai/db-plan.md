@@ -9,7 +9,7 @@ Zatwierdzone fiszki użytkownika (ręczne lub zaakceptowane z AI). Jedyny identy
 | Kolumna        | Typ          | Ograniczenia |
 |----------------|--------------|--------------|
 | `id`           | UUID         | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| `user_id`      | UUID         | NOT NULL (odniesienie logiczne do auth.users.id; brak FK) |
+| `user_id`      | UUID         | NOT NULL, REFERENCES auth.users(id) ON DELETE CASCADE |
 | `front`        | TEXT         | NOT NULL, CHECK (char_length(front) <= 200) |
 | `back`         | TEXT         | NOT NULL, CHECK (char_length(back) <= 500) |
 | `source`       | TEXT         | NOT NULL, CHECK (source IN ('manual', 'ai_generated')) – wartość zawsze ustawiana w INSERT, bez DEFAULT |
@@ -23,7 +23,7 @@ Jedna sesja = jeden wiersz utworzony po otrzymaniu odpowiedzi z LLM. Zawiera met
 | Kolumna          | Typ          | Ograniczenia |
 |------------------|--------------|--------------|
 | `id`             | UUID         | PRIMARY KEY, DEFAULT gen_random_uuid() |
-| `user_id`        | UUID         | NOT NULL (odniesienie logiczne do auth.users.id; brak FK) |
+| `user_id`        | UUID         | NOT NULL, REFERENCES auth.users(id) ON DELETE CASCADE |
 | `input_length`   | INTEGER      | NOT NULL – długość tekstu wejściowego (znaki) |
 | `generated_count`| INTEGER      | NOT NULL – liczba propozycji w tej sesji (np. liczba wierszy w card_proposals) |
 | `accepted_count` | INTEGER      | NOT NULL DEFAULT 0 – liczba fiszek z tej sesji zapisanych do cards; aktualizowana przy zapisie |
@@ -54,8 +54,8 @@ Limit liczby propozycji na sesję (np. max 50) egzekwowany w aplikacji; w MVP br
 
 | Relacja | Typ | Opis |
 |---------|-----|------|
-| **cards → user** | N:1 | Wiele fiszek należy do jednego użytkownika (po `user_id`). Brak FK do auth.users; czyszczenie realizowane triggerem. |
-| **generation_sessions → user** | N:1 | Wiele sesji należy do jednego użytkownika (po `user_id`). |
+| **cards → user** | N:1 | Wiele fiszek należy do jednego użytkownika (po `user_id`). FK: `user_id` → `auth.users(id)` ON DELETE CASCADE. |
+| **generation_sessions → user** | N:1 | Wiele sesji należy do jednego użytkownika (po `user_id`). FK: `user_id` → `auth.users(id)` ON DELETE CASCADE. |
 | **card_proposals → generation_sessions** | N:1 | Wiele propozycji należy do jednej sesji. FK: `session_id` → `generation_sessions(id)` ON DELETE CASCADE. |
 
 Brak tabeli `profiles` w MVP; użytkownik = wpis w `auth.users`. Brak encji „zestawy” (decks); fiszki powiązane tylko z `user_id`.
@@ -114,21 +114,21 @@ Polityki definiowane per operacja (SELECT, INSERT, UPDATE, DELETE) i per rola (`
 - **Akcja**: ustawienie `NEW.updated_at = now()`.  
 Zalecane: funkcja w schemacie `public`, np. `set_updated_at()`, wywoływana przez trigger.
 
-### 5.2 Trigger czyszczenia danych po usunięciu użytkownika
+### 5.2 Czyszczenie danych po usunięciu użytkownika
 
-- **Zdarzenie**: AFTER DELETE ON auth.users  
-- **Akcja**: funkcja w `public`, stworzona z **SECURITY DEFINER** i **SET search_path = public**, która:
-  1. Usuwa wiersze z `cards` WHERE user_id = OLD.id  
-  2. Usuwa wiersze z `generation_sessions` WHERE user_id = OLD.id  
+Usunięcie użytkownika z `auth.users` automatycznie usuwa powiązane dane dzięki FK z `ON DELETE CASCADE`:
+- `cards.user_id` → `auth.users(id)` CASCADE – usunięcie użytkownika usuwa jego fiszki
+- `generation_sessions.user_id` → `auth.users(id)` CASCADE – usunięcie użytkownika usuwa jego sesje
+- `card_proposals.session_id` → `generation_sessions(id)` CASCADE – usunięcie sesji usuwa powiązane propozycje
 
-Przez FK `card_proposals.session_id` → `generation_sessions(id)` ON DELETE CASCADE, usunięcie sesji usuwa powiązane `card_proposals`. Nie definiować FK z `public` do `auth.users`; trigger rejestrowany w migracji wymagającej uprawnień do schematu `auth` (np. self-hosted / CI – rola uruchamiająca migracje musi mieć te uprawnienia).
+Dodatkowy trigger na `auth.users` nie jest wymagany.
 
 ### 5.3 Cykl życia danych
 
 - **Sesja generowania**: po odpowiedzi LLM – INSERT do `generation_sessions` (z `generated_count`) + wiele INSERT do `card_proposals` (z `session_id`, `position`).  
 - **Zatwierdzenie**: INSERT do `cards` (source = 'ai_generated'), UPDATE `generation_sessions.accepted_count`, usunięcie lub brak dalszego użytkowania zatwierdzonych propozycji (w MVP brak TTL/crona dla „sierocych” propozycji).  
 - **Edycja karty**: UPDATE `cards`; trigger ustawia `updated_at`.  
-- **Usunięcie użytkownika**: trigger na auth.users czyści `cards` i `generation_sessions` (CASCADE czyści `card_proposals`).
+- **Usunięcie użytkownika**: FK ON DELETE CASCADE czyści `cards` i `generation_sessions` (CASCADE czyści `card_proposals`).
 
 ### 5.4 Statystyki
 
@@ -141,7 +141,7 @@ W MVP nie wdrażać TTL ani crona. „Sieroce” propozycje (np. zamknięta prze
 ### 5.6 Zgodność z PRD i RODO
 
 - Dane osobowe i treści tylko w tabelach `cards`, `generation_sessions`, `card_proposals`; dostęp wyłącznie dla zalogowanego użytkownika (RLS).  
-- Prawo do usunięcia: usunięcie konta (DELETE w auth.users) uruchamia trigger czyszczący wszystkie dane użytkownika.  
+- Prawo do usunięcia: usunięcie konta (DELETE w auth.users) automatycznie usuwa wszystkie dane użytkownika dzięki FK ON DELETE CASCADE.  
 - Brak soft delete; usunięcia są trwałe.
 
 ---
