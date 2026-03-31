@@ -245,6 +245,25 @@ export type DeleteCardInput = {
   userId: string;
 };
 
+export type UpdateCardByIdInput = {
+  cardId: string;
+  userId: string;
+  patch: UpdateCardCommand;
+};
+
+export type UpdateCardByIdResult =
+  | {
+      kind: "updated";
+      data: CardDto;
+    }
+  | {
+      kind: "not_found";
+    }
+  | {
+      kind: "error";
+      error: Error;
+    };
+
 /**
  * Account DTOs.
  * DELETE /api/v1/account returns 204 No Content in API plan.

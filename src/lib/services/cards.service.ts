@@ -8,6 +8,8 @@ import type {
   GetCardByIdResult,
   ListCardsCommand,
   ListCardsResult,
+  UpdateCardByIdInput,
+  UpdateCardByIdResult,
 } from "@/types";
 
 type DeleteCardResult = { kind: "deleted" } | { kind: "not_found" } | { kind: "error"; error: Error };
@@ -70,6 +72,54 @@ export const getCardById = async (deps: DeleteCardDeps, input: GetCardByIdInput)
 
   return {
     kind: "found",
+    data: {
+      ...data,
+      source: sourceParse.data,
+    },
+  };
+};
+
+export const updateCardById = async (
+  deps: DeleteCardDeps,
+  input: UpdateCardByIdInput
+): Promise<UpdateCardByIdResult> => {
+  const { supabase } = deps;
+  const { cardId, userId, patch } = input;
+
+  const updatePayload: { front?: string; back?: string } = {};
+  if (patch.front !== undefined) updatePayload.front = patch.front;
+  if (patch.back !== undefined) updatePayload.back = patch.back;
+
+  if (Object.keys(updatePayload).length === 0) {
+    return { kind: "error", error: new Error("No fields to update.") };
+  }
+
+  const { data, error } = await supabase
+    .from("cards")
+    .update(updatePayload)
+    .eq("id", cardId)
+    .eq("user_id", userId)
+    .select("id, front, back, source, created_at, updated_at")
+    .maybeSingle();
+
+  if (error) {
+    return { kind: "error", error: new Error(error.message) };
+  }
+
+  if (!data) {
+    return { kind: "not_found" };
+  }
+
+  const sourceParse = cardSourceSchema.safeParse(data.source);
+  if (!sourceParse.success) {
+    return {
+      kind: "error",
+      error: new Error("Invalid card source value."),
+    };
+  }
+
+  return {
+    kind: "updated",
     data: {
       ...data,
       source: sourceParse.data,
