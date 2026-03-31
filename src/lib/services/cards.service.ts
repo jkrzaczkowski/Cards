@@ -3,6 +3,9 @@ import { z } from "zod";
 import type { SupabaseClient } from "@/db/supabase.client";
 import type {
   CardDto,
+  CreateCardsForUserResult,
+  CreateCardsInput,
+  CreateCardsRpcItemPayload,
   DeleteCardInput,
   GetCardByIdInput,
   GetCardByIdResult,
@@ -151,6 +154,75 @@ const mapRowsToCardDtos = (rows: Row[]): CardDto[] => {
       updated_at: row.updated_at,
     };
   });
+};
+
+const RPC_VALIDATION_MESSAGES: Record<string, string> = {
+  INVALID_PROPOSAL_UUID: "proposal_id must be a valid UUID.",
+  INVALID_CARD_COUNT: "cards must contain between 1 and 50 items.",
+  INVALID_CARD_FIELDS: "Each card must have front (1–200) and back (1–500) characters after trim.",
+  INVALID_PAYLOAD: 'Request body must be a JSON object with a valid "cards" array.',
+  USER_ID_REQUIRED: "User identifier is required.",
+};
+
+function mapCreateCardsRpcFailure(error: { message: string }): CreateCardsForUserResult {
+  const raw = error.message ?? "";
+  if (raw.includes("PROPOSALS_INVALID")) {
+    return { kind: "not_found" };
+  }
+
+  const code = (Object.keys(RPC_VALIDATION_MESSAGES) as (keyof typeof RPC_VALIDATION_MESSAGES)[]).find((c) =>
+    raw.includes(c)
+  );
+
+  if (code) {
+    return { kind: "bad_request", message: RPC_VALIDATION_MESSAGES[code] };
+  }
+
+  return { kind: "error", error: new Error(raw) };
+}
+
+/**
+ * Bulk-create cards via `create_cards_bulk` RPC (single transaction: insert + accepted_count).
+ */
+export const createCardsForUser = async (
+  deps: DeleteCardDeps,
+  userId: string,
+  input: CreateCardsInput
+): Promise<CreateCardsForUserResult> => {
+  const { supabase } = deps;
+
+  const p_cards: CreateCardsRpcItemPayload[] = input.cards.map((c) => ({
+    front: c.front,
+    back: c.back,
+    proposal_id: c.proposalId ?? null,
+  }));
+
+  const { data, error } = await supabase.rpc("create_cards_bulk", {
+    p_user_id: userId,
+    p_cards: p_cards,
+  });
+
+  if (error) {
+    return mapCreateCardsRpcFailure(error);
+  }
+
+  const list = data ?? [];
+  if (list.length !== input.cards.length) {
+    return {
+      kind: "error",
+      error: new Error("Unexpected row count from create_cards_bulk."),
+    };
+  }
+
+  try {
+    const items = mapRowsToCardDtos(list as Row[]);
+    return { kind: "ok", data: items };
+  } catch (e) {
+    return {
+      kind: "error",
+      error: e instanceof Error ? e : new Error("Mapping failed."),
+    };
+  }
 };
 
 /** PostgREST filter values; do not URL-encode here — client encodes the query string. */

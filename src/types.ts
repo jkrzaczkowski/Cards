@@ -21,20 +21,20 @@ export type CardSource = "manual" | "ai_generated";
 /**
  * Shared API DTO helpers.
  */
-export type ApiDataResponse<TData> = {
+export interface ApiDataResponse<TData> {
   data: TData;
-};
+}
 
-export type ApiErrorDto = {
+export interface ApiErrorDto {
   code: string;
   message: string;
-};
+}
 
-export type ApiErrorResponseDto = {
+export interface ApiErrorResponseDto {
   error: ApiErrorDto;
-};
+}
 
-export type PaginationMetaDto = {
+export interface PaginationMetaDto {
   /**
    * Always present for response shape consistency.
    * In cursor-based mode this value is conventional (typically 1),
@@ -44,12 +44,12 @@ export type PaginationMetaDto = {
   limit: number;
   total: number;
   has_more: boolean;
-};
+}
 
-export type PaginatedResponseDto<TData> = {
+export interface PaginatedResponseDto<TData> {
   data: TData[];
   meta: PaginationMetaDto;
-};
+}
 
 /**
  * Card DTOs and request models.
@@ -58,28 +58,28 @@ export type CardDto = Omit<CardEntity, "user_id" | "source"> & {
   source: CardSource;
 };
 
-export type ListCardsQueryDto = {
+export interface ListCardsQueryDto {
   page?: number;
   limit?: number;
   sort?: "created_at_desc" | "created_at_asc" | "updated_at_desc";
   cursor?: string;
-};
+}
 
-export type ListCardsCommand = {
+export interface ListCardsCommand {
   userId: string;
   limit: number;
   sort: NonNullable<ListCardsQueryDto["sort"]>;
   mode: "page" | "cursor";
   page?: number;
   cursor?: string;
-};
+}
 
-export type ListCardsResult = {
+export interface ListCardsResult {
   items: CardDto[];
   total: number;
   hasMore: boolean;
   page: number;
-};
+}
 
 export type ListCardsResponseDto = PaginatedResponseDto<CardDto>;
 
@@ -97,9 +97,9 @@ export type CreateCardItemRequestDto = Pick<CardInsertEntity, "front" | "back"> 
   proposal_id?: CardProposalEntity["id"] | null;
 };
 
-export type CreateCardsRequestDto = {
+export interface CreateCardsRequestDto {
   cards: CreateCardItemRequestDto[];
-};
+}
 
 export type CreateCardsResponseDto = ApiDataResponse<CardDto[]>;
 
@@ -124,37 +124,37 @@ export type GenerationSessionDto = Omit<GenerationSessionEntity, "user_id">;
 
 export type CardProposalDto = CardProposalEntity;
 
-export type CreateGenerationSessionRequestDto = {
+export interface CreateGenerationSessionRequestDto {
   input_text: string;
-};
+}
 
-export type GenerationSessionWithProposalsDto = {
+export interface GenerationSessionWithProposalsDto {
   session: GenerationSessionDto;
   proposals: CardProposalDto[];
-};
+}
 
 export type CreateGenerationSessionResponseDto = ApiDataResponse<GenerationSessionWithProposalsDto>;
 
-export type ListGenerationSessionsQueryDto = {
+export interface ListGenerationSessionsQueryDto {
   page?: number;
   limit?: number;
   sort?: "created_at_desc" | "created_at_asc";
-};
+}
 
 export type ListGenerationSessionsResponseDto = PaginatedResponseDto<GenerationSessionDto>;
 
-export type ListGenerationSessionsCommand = {
+export interface ListGenerationSessionsCommand {
   userId: string;
   page: number;
   limit: number;
   sort: NonNullable<ListGenerationSessionsQueryDto["sort"]>;
-};
+}
 
-export type ListGenerationSessionsResult = {
+export interface ListGenerationSessionsResult {
   items: GenerationSessionDto[];
   total: number;
   hasMore: boolean;
-};
+}
 
 export type GetGenerationSessionResponseDto = ApiDataResponse<GenerationSessionWithProposalsDto>;
 
@@ -162,9 +162,9 @@ export type GetGenerationSessionResponseDto = ApiDataResponse<GenerationSessionW
  * Optional endpoint from API plan:
  * POST /api/v1/generation/sessions/:sessionId/proposals/delete
  */
-export type DeleteProposalsRequestDto = {
+export interface DeleteProposalsRequestDto {
   proposal_ids: CardProposalEntity["id"][];
-};
+}
 
 /**
  * Internal service-layer inputs use camelCase.
@@ -173,41 +173,70 @@ export type CreateCardItemInput = Pick<CardInsertEntity, "front" | "back"> & {
   proposalId?: CardProposalEntity["id"] | null;
 };
 
-export type CreateCardsInput = {
+export interface CreateCardsInput {
   cards: CreateCardItemInput[];
-};
+}
 
-export type CreateGenerationSessionInput = {
+/**
+ * JSON payload shape for `create_cards_bulk` RPC (`proposal_id` matches DB / JSON contract).
+ */
+export interface CreateCardsRpcItemPayload {
+  front: string;
+  back: string;
+  proposal_id: string | null;
+}
+
+/**
+ * Resolved item after server-side source/session resolution (internal / docs).
+ */
+export interface ResolvedCreateCardItemInput {
+  front: string;
+  back: string;
+  source: CardSource;
+  proposalId?: CardProposalEntity["id"] | null;
+  sessionId?: GenerationSessionEntity["id"];
+}
+
+/**
+ * Result of bulk card creation (POST /api/v1/cards).
+ */
+export type CreateCardsForUserResult =
+  | { kind: "ok"; data: CardDto[] }
+  | { kind: "not_found" }
+  | { kind: "bad_request"; message: string }
+  | { kind: "error"; error: Error };
+
+export interface CreateGenerationSessionInput {
   inputText: string;
-};
+}
 
-export type DeleteProposalsInput = {
+export interface DeleteProposalsInput {
   proposalIds: CardProposalEntity["id"][];
-};
+}
 
-export type GetGenerationStatsInput = {
+export interface GetGenerationStatsInput {
   userId: string;
-};
+}
 
-export type CardIdPathParamsDto = {
+export interface CardIdPathParamsDto {
   cardId: string;
-};
+}
 
 export type GetCardByIdPathParamsDto = CardIdPathParamsDto;
 export type DeleteCardPathParamsDto = CardIdPathParamsDto;
 export type UpdateCardPathParamsDto = CardIdPathParamsDto;
 
-export type GenerationSessionIdPathParamsDto = {
+export interface GenerationSessionIdPathParamsDto {
   sessionId: string;
-};
+}
 
 export type GetGenerationSessionPathParamsDto = GenerationSessionIdPathParamsDto;
 export type DeleteProposalsPathParamsDto = GenerationSessionIdPathParamsDto;
 
-export type GetGenerationSessionByIdInput = {
+export interface GetGenerationSessionByIdInput {
   sessionId: string;
   userId: string;
-};
+}
 
 export type GetGenerationSessionByIdResult =
   | {
@@ -222,10 +251,10 @@ export type GetGenerationSessionByIdResult =
       error: Error;
     };
 
-export type GetCardByIdInput = {
+export interface GetCardByIdInput {
   cardId: string;
   userId: string;
-};
+}
 
 export type GetCardByIdResult =
   | {
@@ -240,16 +269,16 @@ export type GetCardByIdResult =
       error: Error;
     };
 
-export type DeleteCardInput = {
+export interface DeleteCardInput {
   cardId: string;
   userId: string;
-};
+}
 
-export type UpdateCardByIdInput = {
+export interface UpdateCardByIdInput {
   cardId: string;
   userId: string;
   patch: UpdateCardCommand;
-};
+}
 
 export type UpdateCardByIdResult =
   | {
@@ -269,9 +298,9 @@ export type UpdateCardByIdResult =
  * DELETE /api/v1/account returns 204 No Content in API plan.
  */
 export type DeleteAccountPathParamsDto = Record<string, never>;
-export type DeleteAccountInput = {
+export interface DeleteAccountInput {
   userId: string;
-};
+}
 
 /**
  * Backward-compatible aliases for previous naming.
@@ -287,25 +316,25 @@ export type DeleteCardCommand = DeleteCardInput;
 /**
  * Statistics DTOs.
  */
-export type GenerationStatsDto = {
+export interface GenerationStatsDto {
   total_generated: number;
   total_accepted: number;
   session_count: number;
-};
+}
 
 export type GetGenerationStatsResponseDto = ApiDataResponse<GenerationStatsDto>;
-export type GetGenerationStatsResult = {
+export interface GetGenerationStatsResult {
   totalGenerated: number;
   totalAccepted: number;
   sessionCount: number;
-};
+}
 
 /**
  * Health DTOs.
  */
-export type HealthDto = {
+export interface HealthDto {
   status: "ok";
-};
+}
 
 /**
  * Health endpoint is intentionally unwrapped and returns `{ status: "ok" }`.

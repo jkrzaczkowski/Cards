@@ -131,7 +131,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_cards_bulk: {
+        Args: {
+          p_cards: Json
+          p_user_id: string
+        }
+        Returns: {
+          back: string
+          created_at: string
+          front: string
+          id: string
+          source: string
+          updated_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
