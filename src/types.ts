@@ -53,7 +53,10 @@ export type ListCardsQueryDto = {
 
 export type ListCardsResponseDto = PaginatedResponseDto<CardDto>;
 
-export type CreateCardItemCommand = Pick<CardInsertEntity, "front" | "back"> & {
+/**
+ * API request DTOs keep snake_case to match JSON contracts.
+ */
+export type CreateCardItemRequestDto = Pick<CardInsertEntity, "front" | "back"> & {
   /**
    * Not stored in `cards`; used by API to link accepted AI proposal
    * and update `generation_sessions.accepted_count`.
@@ -63,8 +66,8 @@ export type CreateCardItemCommand = Pick<CardInsertEntity, "front" | "back"> & {
   proposal_id?: CardProposalEntity["id"] | null;
 };
 
-export type CreateCardsCommand = {
-  cards: CreateCardItemCommand[];
+export type CreateCardsRequestDto = {
+  cards: CreateCardItemRequestDto[];
 };
 
 export type CreateCardsResponseDto = ApiDataResponse<CardDto[]>;
@@ -82,7 +85,7 @@ export type GenerationSessionDto = Omit<GenerationSessionEntity, "user_id">;
 
 export type CardProposalDto = CardProposalEntity;
 
-export type CreateGenerationSessionCommand = {
+export type CreateGenerationSessionRequestDto = {
   input_text: string;
 };
 
@@ -110,9 +113,37 @@ export type GetGenerationSessionResponseDto =
  * Optional endpoint from API plan:
  * POST /api/v1/generation/sessions/:sessionId/proposals/delete
  */
-export type DeleteProposalsCommand = {
+export type DeleteProposalsRequestDto = {
   proposal_ids: CardProposalEntity["id"][];
 };
+
+/**
+ * Internal service-layer inputs use camelCase.
+ */
+export type CreateCardItemInput = Pick<CardInsertEntity, "front" | "back"> & {
+  proposalId?: CardProposalEntity["id"] | null;
+};
+
+export type CreateCardsInput = {
+  cards: CreateCardItemInput[];
+};
+
+export type CreateGenerationSessionInput = {
+  inputText: string;
+};
+
+export type DeleteProposalsInput = {
+  proposalIds: CardProposalEntity["id"][];
+};
+
+/**
+ * Backward-compatible aliases for previous naming.
+ * Prefer *RequestDto for API and *Input for internal services.
+ */
+export type CreateCardItemCommand = CreateCardItemRequestDto;
+export type CreateCardsCommand = CreateCardsRequestDto;
+export type CreateGenerationSessionCommand = CreateGenerationSessionRequestDto;
+export type DeleteProposalsCommand = DeleteProposalsRequestDto;
 
 /**
  * Statistics DTOs.
