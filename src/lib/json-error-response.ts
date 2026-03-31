@@ -12,6 +12,10 @@ export function jsonErrorResponse(status: number, code: string, message: string)
   return Response.json(body, { status, headers: JSON_HEADERS });
 }
 
+export function jsonUnauthorized(message = "Authentication required.", code = "UNAUTHORIZED"): Response {
+  return jsonErrorResponse(401, code, message);
+}
+
 export function jsonBadRequest(message: string): Response {
   return jsonErrorResponse(400, "BAD_REQUEST", message);
 }
