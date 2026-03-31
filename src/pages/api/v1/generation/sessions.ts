@@ -4,10 +4,148 @@ import { z } from "zod";
 import { DEFAULT_USER_ID } from "@/db/supabase.client";
 import { jsonBadRequest, jsonErrorResponse, jsonInternalServerError } from "@/lib/json-error-response";
 import { ErrorAuditService } from "@/lib/services/error-audit.service";
+import { listUserSessions } from "@/lib/services/generation-sessions.service";
 import { createGenerationSession } from "@/lib/services/generation.service";
-import type { CreateGenerationSessionRequestDto } from "@/types";
+import type {
+  CreateGenerationSessionRequestDto,
+  ListGenerationSessionsCommand,
+  ListGenerationSessionsResponseDto,
+} from "@/types";
 
 export const prerender = false;
+
+const LIST_ENDPOINT = "/api/v1/generation/sessions" as const;
+const LIST_METHOD = "GET" as const;
+
+const listGenerationSessionsQuerySchema = z
+  .object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    sort: z.enum(["created_at_desc", "created_at_asc"]).default("created_at_desc"),
+  })
+  .strict();
+
+export const GET: APIRoute = async ({ request, locals }) => {
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const started = performance.now();
+  const url = new URL(request.url);
+
+  // TODO(auth): replace DEFAULT_USER_ID with authenticated user id from session/token.
+  const userId = DEFAULT_USER_ID;
+
+  const rawQuery = {
+    page: url.searchParams.get("page") ?? undefined,
+    limit: url.searchParams.get("limit") ?? undefined,
+    sort: url.searchParams.get("sort") ?? undefined,
+  };
+
+  const parsed = listGenerationSessionsQuerySchema.safeParse(rawQuery);
+  if (!parsed.success) {
+    const durationMs = Math.round(performance.now() - started);
+    const first = parsed.error.issues[0];
+    // eslint-disable-next-line no-console -- structured client-error log (plan §6)
+    console.warn(`${LIST_METHOD} ${LIST_ENDPOINT} client error`, {
+      endpoint: LIST_ENDPOINT,
+      method: LIST_METHOD,
+      requestId,
+      userId,
+      statusCode: 400,
+      errorCode: "BAD_REQUEST",
+      durationMs,
+    });
+    return jsonBadRequest(first?.message ?? "Invalid query parameters.");
+  }
+
+  const q = parsed.data;
+  const command: ListGenerationSessionsCommand = {
+    userId,
+    page: q.page,
+    limit: q.limit,
+    sort: q.sort,
+  };
+
+  try {
+    const result = await listUserSessions({ supabase: locals.supabase }, command);
+
+    if (result.kind === "error") {
+      const durationMs = Math.round(performance.now() - started);
+      ErrorAuditService.record({
+        endpoint: LIST_ENDPOINT,
+        method: LIST_METHOD,
+        requestId,
+        userId,
+        statusCode: 500,
+        errorCode: "DB_READ_FAILED",
+        message: result.error.message,
+        context: { durationMs },
+      });
+      // eslint-disable-next-line no-console -- structured server-error log (plan §6)
+      console.error(`${LIST_METHOD} ${LIST_ENDPOINT} server error`, {
+        endpoint: LIST_ENDPOINT,
+        method: LIST_METHOD,
+        requestId,
+        userId,
+        statusCode: 500,
+        errorCode: "DB_READ_FAILED",
+        durationMs,
+      });
+      return jsonInternalServerError();
+    }
+
+    const { items, total, hasMore } = result.data;
+
+    const payload: ListGenerationSessionsResponseDto = {
+      data: items,
+      meta: {
+        page: q.page,
+        limit: q.limit,
+        total,
+        has_more: hasMore,
+      },
+    };
+
+    const durationMs = Math.round(performance.now() - started);
+    // eslint-disable-next-line no-console -- structured success log (plan §6)
+    console.info(`${LIST_METHOD} ${LIST_ENDPOINT} completed`, {
+      endpoint: LIST_ENDPOINT,
+      method: LIST_METHOD,
+      requestId,
+      userId,
+      statusCode: 200,
+      durationMs,
+    });
+
+    return Response.json(payload, {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  } catch (err) {
+    const durationMs = Math.round(performance.now() - started);
+    ErrorAuditService.record({
+      endpoint: LIST_ENDPOINT,
+      method: LIST_METHOD,
+      requestId,
+      userId,
+      statusCode: 500,
+      errorCode: "UNHANDLED_EXCEPTION",
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      context: { durationMs },
+    });
+    // eslint-disable-next-line no-console -- structured server-error log (plan §6)
+    console.error(`${LIST_METHOD} ${LIST_ENDPOINT} server error`, {
+      endpoint: LIST_ENDPOINT,
+      method: LIST_METHOD,
+      requestId,
+      userId,
+      statusCode: 500,
+      errorCode: "UNHANDLED_EXCEPTION",
+      durationMs,
+    });
+
+    return jsonInternalServerError();
+  }
+};
 
 const createGenerationSessionRequestSchema = z
   .object({

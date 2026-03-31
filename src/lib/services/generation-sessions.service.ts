@@ -5,6 +5,8 @@ import type {
   GetGenerationSessionByIdInput,
   GetGenerationSessionByIdResult,
   GenerationSessionWithProposalsDto,
+  ListGenerationSessionsCommand,
+  ListGenerationSessionsResult,
 } from "@/types";
 
 interface GetGenerationSessionByIdDeps {
@@ -24,6 +26,64 @@ const toSessionDto = (row: {
   accepted_count: row.accepted_count,
   created_at: row.created_at,
 });
+
+export type ListUserSessionsResult =
+  | { kind: "ok"; data: ListGenerationSessionsResult }
+  | { kind: "error"; error: Error };
+
+/**
+ * Paginated list of generation sessions for the user (explicit `user_id` filter + RLS).
+ */
+export const listUserSessions = async (
+  deps: GetGenerationSessionByIdDeps,
+  command: ListGenerationSessionsCommand
+): Promise<ListUserSessionsResult> => {
+  const { supabase } = deps;
+  const { userId, page, limit, sort } = command;
+
+  const { count: totalCount, error: countError } = await supabase
+    .from("generation_sessions")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (countError) {
+    return { kind: "error", error: new Error(countError.message) };
+  }
+
+  const total = totalCount ?? 0;
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("generation_sessions")
+    .select("id, input_length, generated_count, accepted_count, created_at")
+    .eq("user_id", userId);
+
+  if (sort === "created_at_desc") {
+    query = query.order("created_at", { ascending: false }).order("id", { ascending: false });
+  } else {
+    query = query.order("created_at", { ascending: true }).order("id", { ascending: true });
+  }
+
+  const { data: rows, error } = await query.range(from, to);
+
+  if (error) {
+    return { kind: "error", error: new Error(error.message) };
+  }
+
+  const list = rows ?? [];
+  const items = list.map((row) => toSessionDto(row));
+  const hasMore = from + items.length < total;
+
+  return {
+    kind: "ok",
+    data: {
+      items,
+      total,
+      hasMore,
+    },
+  };
+};
 
 /**
  * Loads a single generation session and its proposals for the given user.
