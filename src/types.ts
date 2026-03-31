@@ -205,6 +205,24 @@ export type GetGenerationSessionByIdResult =
       kind: "not_found";
     };
 
+export type GetCardByIdInput = {
+  cardId: string;
+  userId: string;
+};
+
+export type GetCardByIdResult =
+  | {
+      kind: "found";
+      data: CardDto;
+    }
+  | {
+      kind: "not_found";
+    }
+  | {
+      kind: "error";
+      error: Error;
+    };
+
 export type DeleteCardInput = {
   cardId: string;
   userId: string;

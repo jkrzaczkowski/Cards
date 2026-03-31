@@ -49,7 +49,11 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const result = await createGenerationSession(
     { supabase: locals.supabase },
-    { inputText: body.input_text, userId: DEFAULT_USER_ID },
+    {
+      inputText: body.input_text,
+      // TODO(auth): replace DEFAULT_USER_ID with authenticated user id from session/token.
+      userId: DEFAULT_USER_ID,
+    },
   );
 
   if (result.kind === "no_proposals") {
