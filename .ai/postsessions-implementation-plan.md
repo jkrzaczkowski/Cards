@@ -191,6 +191,3 @@ Rejestrowanie błędów:
    - bulk insert do `card_proposals` z `position` od 0,
    - rollback przy błędzie.
 6. Dodać mapper odpowiedzi do `CreateGenerationSessionResponseDto` i zwracanie `201`.
-7. Dodać middleware/utility rate limit dla endpointu i mapowanie na `429`.
-8. Dodać logowanie strukturalne błędów i metryk wykonania bez danych wrażliwych.
-
