@@ -216,6 +216,10 @@ export type GetGenerationSessionByIdResult =
     }
   | {
       kind: "not_found";
+    }
+  | {
+      kind: "error";
+      error: Error;
     };
 
 export type GetCardByIdInput = {
