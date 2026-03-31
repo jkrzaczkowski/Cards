@@ -28,9 +28,9 @@ Typy z `src/types.ts`:
 - `HealthDto`:
   - `status: "ok"`
 
-Rekomendowane DTO odpowiedzi:
-- `ApiDataResponse<HealthDto>` **nie jest wymagane** przez bieżącą specyfikację, ponieważ kontrakt mówi o surowym obiekcie `{ "status": "ok" }`.
-- Dla zgodności ze specyfikacją endpointu należy zwracać bezpośrednio:
+DTO odpowiedzi zgodne ze specyfikacją endpointu:
+- Endpoint nie używa `ApiDataResponse<...>`.
+- Dla zgodności ze specyfikacją należy zwracać bezpośrednio:
   - `{ "status": "ok" }`
 
 Command modele:

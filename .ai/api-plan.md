@@ -21,6 +21,12 @@ This document describes the REST API for the Cards MVP. It aligns with the Postg
 | **Generation statistics** | `generation_sessions` (aggregates) | Read-only aggregate view for PRD metrics; not a separate table. |
 | **User / account** | `auth.users` (Supabase) | No `profiles` table in MVP; deletion cascades to `cards` and `generation_sessions` per FK. |
 
+### Response envelope convention
+
+- Default success shape uses `data` envelope (for example `{ "data": ... }`).
+- Paginated endpoints use `{ "data": [...], "meta": { ... } }`.
+- **Exception:** `GET /api/v1/health` returns a plain object `{ "status": "ok" }` (no `data` wrapper).
+
 ---
 
 ## 2. Endpoints
@@ -42,7 +48,7 @@ This document describes the REST API for the Cards MVP. It aligns with the Postg
 | `page` | integer | `1` | 1-based page index. |
 | `limit` | integer | `20` | Page size (cap e.g. 100). |
 | `sort` | string | `created_at_desc` | `created_at_desc` \| `created_at_asc` \| `updated_at_desc`. |
-| `cursor` | string | — | Optional cursor for cursor-based pagination (alternative to `page`; if both sent, define precedence—typically cursor wins). |
+| `cursor` | string | — | Optional cursor for cursor-based pagination (alternative to `page`; if both sent, cursor wins). In cursor mode, `meta.page` remains a conventional value (`1`) for stable response shape. |
 
 **Request body**
 
@@ -332,7 +338,7 @@ Empty body.
 |------|------|---------|-------------|
 | `page` | integer | `1` | Page index. |
 | `limit` | integer | `20` | Page size (capped). |
-| `sort` | string | `created_at_desc` | Sort by `created_at`. |
+| `sort` | string | `created_at_desc` | `created_at_desc` \| `created_at_asc` (sort by `created_at`). |
 
 **Response `200 OK`**
 
@@ -399,6 +405,7 @@ Empty body.
 | Code | When |
 |------|------|
 | `401` | Unauthenticated. |
+| `400` | Invalid `sessionId` format (for example non-UUID). |
 | `404` | Session not found or not accessible. |
 | `500` | Server error. |
 

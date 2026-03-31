@@ -58,11 +58,9 @@ Semantyka danych:
 - gdy użytkownik nie ma sesji, endpoint nadal zwraca `200` z wartościami `0`,
 - wartości muszą być zwrócone jako liczby całkowite (bez `null`).
 
-Mapowanie statusów (w tym standard projektowy):
+Mapowanie statusów:
 - `200` - poprawny odczyt statystyk,
-- `400` - nie dotyczy aktualnego kontraktu (brak danych wejściowych poza auth),
 - `401` - brak aktywnej sesji użytkownika,
-- `404` - nie dotyczy agregatu globalnego użytkownika,
 - `500` - błąd nieoczekiwany/Supabase.
 
 ## 4. Przepływ danych

@@ -129,7 +129,7 @@ Macierz błędów i mapowanie statusów:
 
 Logowanie błędów:
 - Jeżeli projekt posiada tabelę błędów/audytu, zapisywać co najmniej:
-  - `endpoint`, `method`, `user_id` (jeśli znane), `card_id`, `status_code`, `error_code`, `message`, `created_at`.
+  - `endpoint`, `method`, `userId` (jeśli znane), `cardId`, `statusCode`, `errorCode`, `message`, `createdAt`.
 - Jeżeli brak dedykowanej tabeli (w obecnym planie DB brak takiej tabeli), stosować:
   - `console.error`/logger serwerowy z `requestId`,
   - spójny format logów umożliwiający późniejsze podpięcie tabeli błędów.

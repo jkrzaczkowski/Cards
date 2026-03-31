@@ -28,9 +28,10 @@ Walidacja wejścia:
 Wykorzystywane typy DTO i modele:
 - Istniejące typy:
   - `CardEntity`, `CardDto` (do ewentualnego wewnętrznego mapowania wyniku istnienia rekordu).
-- Do dodania w `src/types.ts`:
-  - `DeleteCardCommand` (alias request-level): `{ cardId: string }`.
+- Typy w `src/types.ts` (aktualny stan):
+  - `DeleteCardPathParamsDto`: `{ cardId: string }`.
   - `DeleteCardInput` (service-level): `{ cardId: string; userId: string }`.
+  - `DeleteCardCommand` (alias legacy): wskazuje na `DeleteCardInput`.
 - Odpowiedź sukcesu:
   - Brak dedykowanego DTO body (status `204` z pustym ciałem).
 
@@ -111,7 +112,7 @@ Rejestrowanie błędów:
    - handler `DELETE`.
 2. Dodać schemat Zod walidujący `cardId` jako UUID.
 3. Dodać guard uwierzytelnienia (Supabase user z `context.locals`) i zwrot `401`.
-4. W `src/types.ts` dodać `DeleteCardCommand` i `DeleteCardInput`.
+4. W `src/types.ts` użyć istniejących: `DeleteCardPathParamsDto`, `DeleteCardInput` (oraz legacy alias `DeleteCardCommand`).
 5. Utworzyć lub rozszerzyć `src/lib/services/cards.service.ts` o metodę `deleteCard(input)`.
 6. W serwisie zaimplementować usuwanie rekordu z `cards` z interpretacją:
    - usunięto rekord -> sukces

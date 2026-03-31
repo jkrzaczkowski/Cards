@@ -25,7 +25,21 @@ export type ApiDataResponse<TData> = {
   data: TData;
 };
 
+export type ApiErrorDto = {
+  code: string;
+  message: string;
+};
+
+export type ApiErrorResponseDto = {
+  error: ApiErrorDto;
+};
+
 export type PaginationMetaDto = {
+  /**
+   * Always present for response shape consistency.
+   * In cursor-based mode this value is conventional (typically 1),
+   * while `has_more` + cursor navigation drive pagination flow.
+   */
   page: number;
   limit: number;
   total: number;
@@ -38,7 +52,7 @@ export type PaginatedResponseDto<TData> = {
 };
 
 /**
- * Card DTOs and Commands.
+ * Card DTOs and request models.
  */
 export type CardDto = Omit<CardEntity, "user_id" | "source"> & {
   source: CardSource;
@@ -55,6 +69,7 @@ export type ListCardsResponseDto = PaginatedResponseDto<CardDto>;
 
 /**
  * API request DTOs keep snake_case to match JSON contracts.
+ * Path params and internal service inputs use camelCase.
  */
 export type CreateCardItemRequestDto = Pick<CardInsertEntity, "front" | "back"> & {
   /**
@@ -74,7 +89,15 @@ export type CreateCardsResponseDto = ApiDataResponse<CardDto[]>;
 
 export type GetCardByIdResponseDto = ApiDataResponse<CardDto>;
 
-export type UpdateCardCommand = Partial<Pick<CardUpdateEntity, "front" | "back">>;
+type AtLeastOne<T, Keys extends keyof T = keyof T> = Keys extends keyof T
+  ? Required<Pick<T, Keys>> & Partial<Omit<T, Keys>>
+  : never;
+
+export type UpdateCardRequestDto = AtLeastOne<{
+  front?: string;
+  back?: string;
+}>;
+export type UpdateCardInput = UpdateCardRequestDto;
 
 export type UpdateCardResponseDto = ApiDataResponse<CardDto>;
 
@@ -106,6 +129,19 @@ export type ListGenerationSessionsQueryDto = {
 export type ListGenerationSessionsResponseDto =
   PaginatedResponseDto<GenerationSessionDto>;
 
+export type ListGenerationSessionsCommand = {
+  userId: string;
+  page: number;
+  limit: number;
+  sort: NonNullable<ListGenerationSessionsQueryDto["sort"]>;
+};
+
+export type ListGenerationSessionsResult = {
+  items: GenerationSessionDto[];
+  total: number;
+  hasMore: boolean;
+};
+
 export type GetGenerationSessionResponseDto =
   ApiDataResponse<GenerationSessionWithProposalsDto>;
 
@@ -136,14 +172,63 @@ export type DeleteProposalsInput = {
   proposalIds: CardProposalEntity["id"][];
 };
 
+export type GetGenerationStatsInput = {
+  userId: string;
+};
+
+export type CardIdPathParamsDto = {
+  cardId: string;
+};
+
+export type GetCardByIdPathParamsDto = CardIdPathParamsDto;
+export type DeleteCardPathParamsDto = CardIdPathParamsDto;
+export type UpdateCardPathParamsDto = CardIdPathParamsDto;
+
+export type GenerationSessionIdPathParamsDto = {
+  sessionId: string;
+};
+
+export type GetGenerationSessionPathParamsDto = GenerationSessionIdPathParamsDto;
+export type DeleteProposalsPathParamsDto = GenerationSessionIdPathParamsDto;
+
+export type GetGenerationSessionByIdInput = {
+  sessionId: string;
+  userId: string;
+};
+
+export type GetGenerationSessionByIdResult =
+  | {
+      kind: "found";
+      data: GenerationSessionWithProposalsDto;
+    }
+  | {
+      kind: "not_found";
+    };
+
+export type DeleteCardInput = {
+  cardId: string;
+  userId: string;
+};
+
+/**
+ * Account DTOs.
+ * DELETE /api/v1/account returns 204 No Content in API plan.
+ */
+export type DeleteAccountPathParamsDto = Record<string, never>;
+export type DeleteAccountInput = {
+  userId: string;
+};
+
 /**
  * Backward-compatible aliases for previous naming.
  * Prefer *RequestDto for API and *Input for internal services.
  */
 export type CreateCardItemCommand = CreateCardItemRequestDto;
 export type CreateCardsCommand = CreateCardsRequestDto;
+export type UpdateCardCommand = UpdateCardRequestDto;
 export type CreateGenerationSessionCommand = CreateGenerationSessionRequestDto;
 export type DeleteProposalsCommand = DeleteProposalsRequestDto;
+export type DeleteCardCommand = DeleteCardInput;
 
 /**
  * Statistics DTOs.
@@ -155,6 +240,11 @@ export type GenerationStatsDto = {
 };
 
 export type GetGenerationStatsResponseDto = ApiDataResponse<GenerationStatsDto>;
+export type GetGenerationStatsResult = {
+  totalGenerated: number;
+  totalAccepted: number;
+  sessionCount: number;
+};
 
 /**
  * Health DTOs.
@@ -162,3 +252,8 @@ export type GetGenerationStatsResponseDto = ApiDataResponse<GenerationStatsDto>;
 export type HealthDto = {
   status: "ok";
 };
+
+/**
+ * Health endpoint is intentionally unwrapped and returns `{ status: "ok" }`.
+ */
+export type GetHealthResponseDto = HealthDto;

@@ -1,7 +1,7 @@
 # API Endpoint Implementation Plan: GET /api/v1/generation/sessions/:sessionId
 
 <analysis>
-1. Klucz specyfikacji: endpoint odczytowy `GET /api/v1/generation/sessions/:sessionId` zwraca pojedynczą sesję generowania wraz z pełną listą propozycji; sukces `200`, błędy `401`, `404`, `500`.
+1. Klucz specyfikacji: endpoint odczytowy `GET /api/v1/generation/sessions/:sessionId` zwraca pojedynczą sesję generowania wraz z pełną listą propozycji; sukces `200`, błędy `400`, `401`, `404`, `500`.
 2. Parametry:
    - wymagane: `sessionId` (path, UUID),
    - opcjonalne: brak query params, brak request body.

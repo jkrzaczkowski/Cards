@@ -43,7 +43,7 @@ Zwraca dane w formacie `ListCardsResponseDto` (`data` + `meta`) i wspiera dwa tr
 - `200 OK` (sukces):
   - `data`: tablica fiszek użytkownika (`CardDto[]`)
   - `meta`:
-    - `page`: aktualna strona (dla cursor-mode można utrzymywać `page=1` lub wyliczaną logicznie; ważna spójność kontraktu)
+    - `page`: aktualna strona; w cursor-mode utrzymujemy stałe `page=1` dla spójnego kontraktu odpowiedzi
     - `limit`: rozmiar strony
     - `total`: łączna liczba rekordów użytkownika
     - `has_more`: informacja o dostępności kolejnych rekordów
@@ -110,7 +110,7 @@ Zwraca dane w formacie `ListCardsResponseDto` (`data` + `meta`) i wspiera dwa tr
   - W dostarczonym modelu DB brak dedykowanej tabeli błędów.
   - Plan MVP: logowanie aplikacyjne (server logs) + adapter `ErrorAuditService` jako punkt rozszerzenia.
   - Jeśli tabela błędów zostanie dodana później (np. `api_errors`), adapter powinien:
-    - zapisać `endpoint`, `method`, `user_id`, `status_code`, `error_code`, `message`, `request_id`, `created_at`,
+    - zapisać `endpoint`, `method`, `userId`, `statusCode`, `errorCode`, `message`, `requestId`, `createdAt`,
     - działać best-effort (błąd logowania nie może przerywać głównej odpowiedzi API).
 
 ## 8. Wydajność
