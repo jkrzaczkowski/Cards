@@ -54,10 +54,11 @@ export type ListCardsQueryDto = {
 export type ListCardsResponseDto = PaginatedResponseDto<CardDto>;
 
 export type CreateCardItemCommand = Pick<CardInsertEntity, "front" | "back"> & {
-  source: CardSource;
   /**
    * Not stored in `cards`; used by API to link accepted AI proposal
    * and update `generation_sessions.accepted_count`.
+   * If present, server stores card with `source = "ai_generated"`;
+   * otherwise server stores `source = "manual"`.
    */
   proposal_id?: CardProposalEntity["id"] | null;
 };

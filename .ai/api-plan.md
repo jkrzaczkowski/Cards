@@ -92,7 +92,7 @@ None.
 |---|---|
 | **HTTP** | `POST` |
 | **Path** | `/api/v1/cards` |
-| **Description** | Create one or more cards in a single request. Used for manual cards (`source: manual`) and for AI-generated cards accepted as-is or after editing (`source: ai_generated`). Server sets `source` based on the value provided per item; `proposal_id` is optional metadata linking to the originating `card_proposals` row. All items are inserted as a batch; if any item fails validation the entire request is rejected (400) before any insert. |
+| **Description** | Create one or more cards in a single request. Used for manual cards and for AI-generated cards accepted as-is or after editing. Client provides final `front`/`back`; server derives `source` per item from `proposal_id` (`proposal_id` present -> `ai_generated`, absent -> `manual`) and persists it. `proposal_id` is optional metadata linking to the originating `card_proposals` row. All items are inserted as a batch; if any item fails validation the entire request is rejected (400) before any insert. |
 
 **Request body**
 
@@ -102,7 +102,6 @@ None.
     {
       "front": "string",
       "back": "string",
-      "source": "manual | ai_generated",
       "proposal_id": "uuid | null"
     }
   ]
@@ -110,7 +109,7 @@ None.
 ```
 
 - `cards` — array, **1–50** items.
-- `source` — required per item: `manual` for hand-typed cards; `ai_generated` for proposals accepted as-is or after editing.
+- `source` — not accepted from client. Server derives it per item: `manual` when `proposal_id` is missing, `ai_generated` when `proposal_id` is provided and valid.
 - `proposal_id` — optional; when provided, the server verifies the proposal belongs to a session owned by the user and updates `generation_sessions.accepted_count` accordingly.
 - `front` / `back` contain the final text (already edited by the user if applicable).
 
@@ -142,14 +141,14 @@ Array order matches the request `cards` array order.
 | Code | When |
 |------|------|
 | `401` | Unauthenticated. |
-| `400` | Array empty, exceeds 50 items, or any item fails field validation (empty `front`/`back`, length limits, unknown `source`). |
+| `400` | Array empty, exceeds 50 items, or any item fails field validation (empty `front`/`back`, length limits). |
 | `404` | A provided `proposal_id` does not exist or does not belong to the user. |
 | `500` | Server/database error. |
 
 **Validation (align with DB):**
 - `front` required per item; `char_length(front) <= 200`.
 - `back` required per item; `char_length(back) <= 500`.
-- `source` must be one of `manual`, `ai_generated`.
+- `source` is derived server-side (`manual` if `proposal_id` missing; `ai_generated` if `proposal_id` is present and valid).
 - When `proposal_id` present: verify via `card_proposals` → `generation_sessions.user_id = auth.uid()` before insert; after successful insert increment `accepted_count` in the corresponding session(s).
 
 ---
@@ -407,7 +406,7 @@ Empty body.
 
 #### Accept proposals (bulk save to `cards`)
 
-> **Handled by `POST /api/v1/cards`** — proposal acceptance (full or edited) is unified under the bulk card creation endpoint. Pass `source: "ai_generated"` and `proposal_id` per item; the server handles `accepted_count` updates and proposal cleanup in a single transaction. No separate session-scoped accept endpoint is needed.
+> **Handled by `POST /api/v1/cards`** — proposal acceptance (full or edited) is unified under the bulk card creation endpoint. Pass `proposal_id` per accepted item; the server derives `source = "ai_generated"`, updates `accepted_count`, and performs proposal cleanup in a single transaction. No separate session-scoped accept endpoint is needed.
 
 ---
 
@@ -476,7 +475,7 @@ Alternatively, **omit** and rely on client-only rejection without DB delete unti
 |-------------------|--------|
 | **cards** `front` | Required on create/update; length ≤ **200** (PostgreSQL CHECK). |
 | **cards** `back` | Required; length ≤ **500** (PostgreSQL CHECK). |
-| **cards** `source` | Set only server-side: `manual` on direct create; `ai_generated` on accept from proposals. |
+| **cards** `source` | Set only server-side in `POST /api/v1/cards`: `manual` when `proposal_id` is absent, `ai_generated` when `proposal_id` is present and valid. |
 | **generation_sessions** `input_length` | Set server from measured `input_text` length on create. |
 | **Generation input (PRD)** | `input_text` **1000–10 000** characters before calling LLM. |
 | **card_proposals** count | ≤ **50** per session (application enforcement). |
@@ -487,8 +486,8 @@ Alternatively, **omit** and rely on client-only rejection without DB delete unti
 | Concern | Implementation |
 |---------|----------------|
 | LLM call | Only in `POST /api/v1/generation/sessions` (or shared server module); OpenRouter API key in server env only (tech-stack). |
-| Accept flow | `POST /api/v1/cards` with `source: ai_generated` and `proposal_id`: transactional bulk insert into `cards`, increment `accepted_count` on the owning session(s), delete accepted `card_proposals` rows. Works for proposals accepted as-is ("full") and after user edits ("edited"). |
-| Manual CRUD | Standard REST on `/api/v1/cards` (same bulk create endpoint with `source: manual`, no `proposal_id`). |
+| Accept flow | `POST /api/v1/cards` with `proposal_id`: transactional bulk insert into `cards` (server sets `source: ai_generated`), increment `accepted_count` on the owning session(s), delete accepted `card_proposals` rows. Works for proposals accepted as-is ("full") and after user edits ("edited"). |
+| Manual CRUD | Standard REST on `/api/v1/cards` (same bulk create endpoint; for manual create client sends no `proposal_id`, server sets `source: manual`). |
 | Stats | `GET /api/v1/stats/generation`: SQL aggregates over `generation_sessions` for `user_id = auth.uid()`. |
 | Account deletion | `DELETE /api/v1/account`: Admin API + CASCADE (db-plan §5.2, §5.6). |
 | Spaced repetition | **Out of scope** for REST in MVP; client library holds session state (PRD §4.1). |
