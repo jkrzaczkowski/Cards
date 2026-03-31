@@ -2,6 +2,8 @@ import type { APIRoute } from "astro";
 import { z } from "zod";
 
 import { DEFAULT_USER_ID } from "@/db/supabase.client";
+import { jsonBadRequest, jsonErrorResponse, jsonInternalServerError } from "@/lib/json-error-response";
+import { ErrorAuditService } from "@/lib/services/error-audit.service";
 import { createGenerationSession } from "@/lib/services/generation.service";
 import type { CreateGenerationSessionRequestDto } from "@/types";
 
@@ -18,17 +20,6 @@ const createGenerationSessionRequestSchema = z
   })
   .strict();
 
-const badRequest = (message: string) =>
-  Response.json(
-    {
-      error: {
-        code: "BAD_REQUEST",
-        message,
-      },
-    },
-    { status: 400 },
-  );
-
 export const POST: APIRoute = async ({ request, locals }) => {
   const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
 
@@ -36,13 +27,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try {
     rawBody = await request.json();
   } catch {
-    return badRequest("Invalid JSON body.");
+    return jsonBadRequest("Invalid JSON body.");
   }
 
   const parsedBody = createGenerationSessionRequestSchema.safeParse(rawBody);
   if (!parsedBody.success) {
     const firstIssue = parsedBody.error.issues[0];
-    return badRequest(firstIssue?.message ?? "Invalid request body.");
+    return jsonBadRequest(firstIssue?.message ?? "Invalid request body.");
   }
 
   const body = parsedBody.data satisfies CreateGenerationSessionRequestDto;
@@ -53,42 +44,28 @@ export const POST: APIRoute = async ({ request, locals }) => {
       inputText: body.input_text,
       // TODO(auth): replace DEFAULT_USER_ID with authenticated user id from session/token.
       userId: DEFAULT_USER_ID,
-    },
+    }
   );
 
   if (result.kind === "no_proposals") {
-    return Response.json(
-      {
-        error: {
-          code: "NO_PROPOSALS",
-          message: "No valid proposals could be generated from the input.",
-        },
-      },
-      { status: 422 },
-    );
+    return jsonErrorResponse(422, "NO_PROPOSALS", "No valid proposals could be generated from the input.");
   }
 
   if (result.kind === "error") {
-    console.error("Create generation session failed", {
+    ErrorAuditService.record({
       endpoint: "/api/v1/generation/sessions",
       method: "POST",
       requestId,
       userId: DEFAULT_USER_ID,
+      statusCode: 500,
       errorCode: "DB_WRITE_FAILED",
       message: result.error.message,
     });
 
-    return Response.json(
-      {
-        error: {
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Internal server error.",
-        },
-      },
-      { status: 500 },
-    );
+    return jsonInternalServerError();
   }
 
+  // eslint-disable-next-line no-console -- success audit log
   console.info("POST /api/v1/generation/sessions completed", {
     endpoint: "/api/v1/generation/sessions",
     method: "POST",
@@ -103,6 +80,6 @@ export const POST: APIRoute = async ({ request, locals }) => {
     {
       data: result.data,
     },
-    { status: 201 },
+    { status: 201 }
   );
 };

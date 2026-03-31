@@ -65,6 +65,22 @@ export type ListCardsQueryDto = {
   cursor?: string;
 };
 
+export type ListCardsCommand = {
+  userId: string;
+  limit: number;
+  sort: NonNullable<ListCardsQueryDto["sort"]>;
+  mode: "page" | "cursor";
+  page?: number;
+  cursor?: string;
+};
+
+export type ListCardsResult = {
+  items: CardDto[];
+  total: number;
+  hasMore: boolean;
+  page: number;
+};
+
 export type ListCardsResponseDto = PaginatedResponseDto<CardDto>;
 
 /**
@@ -117,8 +133,7 @@ export type GenerationSessionWithProposalsDto = {
   proposals: CardProposalDto[];
 };
 
-export type CreateGenerationSessionResponseDto =
-  ApiDataResponse<GenerationSessionWithProposalsDto>;
+export type CreateGenerationSessionResponseDto = ApiDataResponse<GenerationSessionWithProposalsDto>;
 
 export type ListGenerationSessionsQueryDto = {
   page?: number;
@@ -126,8 +141,7 @@ export type ListGenerationSessionsQueryDto = {
   sort?: "created_at_desc" | "created_at_asc";
 };
 
-export type ListGenerationSessionsResponseDto =
-  PaginatedResponseDto<GenerationSessionDto>;
+export type ListGenerationSessionsResponseDto = PaginatedResponseDto<GenerationSessionDto>;
 
 export type ListGenerationSessionsCommand = {
   userId: string;
@@ -142,8 +156,7 @@ export type ListGenerationSessionsResult = {
   hasMore: boolean;
 };
 
-export type GetGenerationSessionResponseDto =
-  ApiDataResponse<GenerationSessionWithProposalsDto>;
+export type GetGenerationSessionResponseDto = ApiDataResponse<GenerationSessionWithProposalsDto>;
 
 /**
  * Optional endpoint from API plan:
